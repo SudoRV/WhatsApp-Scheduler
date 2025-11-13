@@ -248,6 +248,12 @@ schedules.forEach(s => {
 });
 
 
+schedule.scheduleJob(new Date(Date.now() + 5000), () => {
+    console.log("🔥 Schedule test fired at", new Date().toISOString());
+});
+
+
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
