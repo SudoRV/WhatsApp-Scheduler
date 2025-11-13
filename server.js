@@ -136,6 +136,8 @@ function initWhatsAppClient() {
     client.initialize();
 }
 
+initWhatsAppClient();
+
 
 // simple web socket connection logs
 io.on("connection", (socket) => {
