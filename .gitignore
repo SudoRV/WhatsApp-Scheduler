@@ -1,0 +1,18 @@
+# Ignore node modules
+node_modules/
+
+# Ignore build and dist folders
+dist/
+build/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+.wwebjs_cache
+.wwebjs_auth
+
+# Ignore environment variables
+.env
+
+# Ignore log files
+*.log

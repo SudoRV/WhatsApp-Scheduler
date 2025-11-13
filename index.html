@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>WhatsApp Scheduler (QR Login)</title>
+    <style>
+        body {
+            font-family: system-ui, Arial;
+            padding: 18px;
+            max-width: 720px;
+            margin: auto;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            padding: 14px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+
+        img.qr {
+            width: 260px;
+            height: 260px;
+            object-fit: contain;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            box-sizing: border-box
+        }
+
+        button {
+            margin-top: 12px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer
+        }
+
+        .status {
+            margin-top: 12px;
+            font-weight: 600
+        }
+    </style>
+</head>
+
+<body>
+    <h2>WhatsApp Scheduler — login with QR</h2>
+
+    <div class="card">
+        <button id="linkBtn">Link WhatsApp</button>
+        <button id="logoutBtn" style="margin-top:10px; display: none;">Logout</button>
+        <div id="qrSection">
+            <p><strong>Scan this QR in WhatsApp → Linked devices → Link a device</strong></p>
+            <img id="qrImage" class="qr" src="" alt="QR will appear here" />
+            <p id="qrHint">Waiting for QR...</p>
+        </div>
+
+        <p class="status">Status: <span id="statusText">NOT_CONNECTED</span></p>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+        <h3>Schedule a message</h3>
+        <form id="scheduleForm">
+            <label>Phone number (country code + number, no plus or spaces)</label>
+            <input id="number" placeholder="919876543210" required />
+
+            <label>Message</label>
+            <textarea id="message" rows="3" placeholder="Your message..." required></textarea>
+
+            <label>Schedule time (local)</label>
+            <input id="time" type="datetime-local" required />
+
+            <button type="submit">Schedule</button>
+        </form>
+
+        <p id="result" style="margin-top:10px;"></p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        const qrImage = document.getElementById("qrImage");
+        const qrHint = document.getElementById("qrHint");
+        const statusText = document.getElementById("statusText");
+        const linkBtn = document.getElementById("linkBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+
+        socket.on("connect", () => {
+            console.log("connected to socket");
+        });
+
+        socket.on("qr", (dataUrl) => {
+            qrImage.src = dataUrl;
+            qrHint.innerText = "Scan using WhatsApp -> Linked devices -> Link a device";
+            statusText.innerText = "QR_RECEIVED";
+        });
+
+        socket.on("status", (s) => {
+            statusText.innerText = s;
+            if (s === "READY" || s === "AUTHENTICATED") {
+                // hide QR when ready
+                document.getElementById("qrSection").style.display = "none";
+                linkBtn.style.display = "none";
+                logoutBtn.style.display = "inline-block";
+            } else if (s === "QR_RECEIVED") {
+                document.getElementById("qrSection").style.display = "block";
+            }
+        });
+
+        socket.on("userInfo", (data) => {
+            console.log(data)
+            //document.getElementById("userNumber").textContent = "Linked WhatsApp: " + data.number;
+        });
+
+        //link whatsapp
+        linkBtn.addEventListener("click", async () => {
+            const res = await fetch("/link", { method: "POST" });
+            const data = await res.json();
+        });
+
+        //logout
+        logoutBtn.addEventListener("click", async () => {
+            const res = await fetch("/logout", { method: "POST" });
+            const data = await res.json();
+            logoutBtn.style.display = "none";
+            alert(data.msg);
+        });
+
+
+        // schedule form
+        document.getElementById("scheduleForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const number = document.getElementById("number").value.trim();
+            const message = document.getElementById("message").value.trim();
+            const time = document.getElementById("time").value;
+
+            const res = await fetch("/schedule", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ number, message, time })
+            });
+            const data = await res.json();
+            document.getElementById("result").innerText = data.msg || JSON.stringify(data);
+        });
+    </script>
+</body>
+
+</html>
