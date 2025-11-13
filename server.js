@@ -8,6 +8,31 @@ const schedule = require("node-schedule");
 const cors = require("cors");
 const path = require("path");
 const { platform } = require("os");
+const fs = require("fs");
+const SCHEDULES_FILE = path.join(__dirname, "schedules.json");
+
+// Load schedules
+let schedules = [];
+if (fs.existsSync(SCHEDULES_FILE)) {
+    try {
+        schedules = JSON.parse(fs.readFileSync(SCHEDULES_FILE, "utf8"));
+    } catch {
+        schedules = [];
+    }
+}
+
+// helper to persist
+function saveSchedules() {
+    // store only serializable data
+    const cleanData = schedules.map(({ number, message, time, repeat }) => ({
+        number,
+        message,
+        time,
+        repeat
+    }));
+
+    fs.writeFileSync(SCHEDULES_FILE, JSON.stringify(cleanData, null, 2));
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -23,6 +48,32 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 })
+
+app.get("/schedules", (req, res) => {
+    const cleanList = schedules.map(({ number, message, time, repeat }) => ({
+        number,
+        message,
+        time,
+        repeat
+    }));
+    res.json({ schedules: cleanList });
+});
+
+
+app.delete("/schedule/:number", (req, res) => {
+    const { number } = req.params;
+    const idx = schedules.findIndex(s => s.number === number);
+    if (idx === -1) return res.status(404).json({ success: false, msg: "Schedule not found" });
+
+    const [removed] = schedules.splice(idx, 1);
+    if (removed.job) removed.job.cancel();
+
+    saveSchedules();
+    res.json({ success: true, msg: `Deleted schedule for ${number}` });
+});
+
+
+
 
 let client; // make client re-creatable
 
@@ -122,32 +173,78 @@ app.post("/logout", async (req, res) => {
 
 
 // schedule endpoint
+// schedule endpoint (create/update)
 app.post("/schedule", async (req, res) => {
-    const { number, message, time } = req.body;
-    if (!number || !message || !time) {
+    const { number, message, time, repeat = "once" } = req.body;
+    if (!number || !message || !time)
         return res.status(400).json({ success: false, error: "number, message and time are required" });
-    }
 
-    // ensure correct WhatsApp chat id format (international number, no +)
-    // e.g. 919876543210 => 919876543210@c.us
     const chatId = `${number.replace(/\D/g, "")}@c.us`;
     const date = new Date(time);
-
-    if (isNaN(date.getTime())) {
+    if (isNaN(date.getTime()))
         return res.status(400).json({ success: false, error: "Invalid time format" });
+
+    // if already scheduled for this number, cancel old one
+    const existing = schedules.find(s => s.number === number);
+    if (existing && existing.job) {
+        existing.job.cancel();
+        schedules = schedules.filter(s => s.number !== number);
     }
 
-    schedule.scheduleJob(date, async () => {
-        try {
-            await client.sendMessage(chatId, message);
-            console.log(`Sent scheduled message to ${number} at ${new Date().toISOString()}`);
-        } catch (err) {
-            console.error("Failed to send scheduled message:", err);
-        }
-    });
+    // schedule job
+    let job;
+    if (repeat === "daily") {
+        const cronExp = `${date.getMinutes()} ${date.getHours()} * * *`;
+        job = schedule.scheduleJob({ rule: cronExp, tz: "Asia/Kolkata" }, async () => {
+            try {
+                await client.sendMessage(chatId, message);
+                console.log(`Daily message sent to ${number}`);
+            } catch (err) {
+                console.error("Failed daily send:", err);
+            }
+        });
+    } else {
+        job = schedule.scheduleJob(date, async () => {
+            try {
+                await client.sendMessage(chatId, message);
+                console.log(`One-time message sent to ${number}`);
+            } catch (err) {
+                console.error("Failed one-time send:", err);
+            }
+        });
+    }
 
-    return res.json({ success: true, msg: `Message scheduled for ${date.toString()}` });
+    // store job info safely (without circular refs)
+    schedules.push({ number, message, time, repeat, job });
+    saveSchedules();
+
+    res.json({ success: true, msg: `Message scheduled (${repeat})`, total: schedules.length });
 });
+
+
+
+
+// Restore schedules on startup
+schedules.forEach(s => {
+    const chatId = `${s.number.replace(/\D/g, "")}@c.us`;
+    const date = new Date(s.time);
+
+    if (s.repeat === "daily") {
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const cronExp = `${minutes} ${hours} * * *`;
+        s.job = schedule.scheduleJob({ rule: cronExp, tz: "Asia/Kolkata" }, async () => {
+            await client.sendMessage(chatId, s.message);
+            console.log(`Restored daily message sent to ${s.number}`);
+        });
+    } else if (date > new Date()) {
+        s.job = schedule.scheduleJob(date, async () => {
+            await client.sendMessage(chatId, s.message);
+            console.log(`Restored one-time message sent to ${s.number}`);
+        });
+    }
+});
+
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

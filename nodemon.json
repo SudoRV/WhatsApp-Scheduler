@@ -1,0 +1,10 @@
+{
+    "ignore": [
+      "schedules.json",  
+      "public/*",         
+      "README.md"       
+    ],
+    "watch": ["server.js"],
+    "ext": "js,json"
+  }
+  
