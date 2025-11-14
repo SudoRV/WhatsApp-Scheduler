@@ -225,7 +225,8 @@
       const localTime = document.getElementById("time").value; // local datetime string
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; // browser timezone
       
-      const utcISO = new Date(localTime.getTime() - localTime.getTimezoneOffset()*60000).toISOString();
+      const d = new Date(localTime);
+      const utcISO = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString();
       console.log(utcISO, localTime)
 
       const res = await fetch("/schedule", {
