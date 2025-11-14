@@ -178,6 +178,14 @@ io.on("connection", (socket) => {
 });
 
 
+app.get("/server-time", (req, res) => {
+    res.send({
+        serverTime: new Date().toString(),
+        serverISOString: new Date().toISOString()
+    });
+});
+
+
 // Re-initialize WhatsApp client manually
 app.post("/link", async (req, res) => {
     try {
@@ -211,12 +219,13 @@ app.post("/logout", async (req, res) => {
 // schedule endpoint (create/update)
 app.post("/schedule", async (req, res) => {
     const { number, message, time, timezone, repeat = "once" } = req.body;
-    console.log(timezone);
+    console.log(time, timezone);
     if (!number || !message || !time || !timezone)
         return res.status(400).json({ success: false, error: "number, message and time are required" });
 
     const chatId = `${number.replace(/\D/g, "")}@c.us`;
     const date = new Date(time);
+    console.log(date)
     if (isNaN(date.getTime()))
         return res.status(400).json({ success: false, error: "Invalid time format" });
 
