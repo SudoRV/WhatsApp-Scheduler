@@ -169,7 +169,7 @@ io.on("connection", (socket) => {
                 io.emit("userInfo", {});
             }
         } catch (err) {
-            console.error("Error getting client state", err);
+            console.error("Error getting client state");
             io.emit("userInfo", {});
         }
     })();
@@ -181,7 +181,7 @@ io.on("connection", (socket) => {
 // Re-initialize WhatsApp client manually
 app.post("/link", async (req, res) => {
     try {
-        if (client) {
+        if (client?.info) {
             await client.destroy(); // safely close old instance if exists
         }
         initWhatsAppClient(); // create new instance and emit fresh QR
@@ -210,8 +210,9 @@ app.post("/logout", async (req, res) => {
 // schedule endpoint
 // schedule endpoint (create/update)
 app.post("/schedule", async (req, res) => {
-    const { number, message, time, repeat = "once" } = req.body;
-    if (!number || !message || !time)
+    const { number, message, time, timezone, repeat = "once" } = req.body;
+    console.log(timezone);
+    if (!number || !message || !time || !timezone)
         return res.status(400).json({ success: false, error: "number, message and time are required" });
 
     const chatId = `${number.replace(/\D/g, "")}@c.us`;
@@ -230,7 +231,7 @@ app.post("/schedule", async (req, res) => {
     let job;
     if (repeat === "daily") {
         const cronExp = `${date.getMinutes()} ${date.getHours()} * * *`;
-        job = schedule.scheduleJob({ rule: cronExp, tz: "Asia/Kolkata" }, async () => {
+        job = schedule.scheduleJob({ rule: cronExp, tz: timezone }, async () => {
             try {
                 await client.sendMessage(chatId, message);
                 console.log(`Daily message sent to ${number}`);
