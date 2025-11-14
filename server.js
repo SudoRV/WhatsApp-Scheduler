@@ -88,11 +88,11 @@ function initWhatsAppClient() {
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--disable-dev-shm-usage",
-                "--disable-accelerated-2d-canvas",
-                "--no-first-run",
-                "--no-zygote",
+                "--disable-gpu",
                 "--single-process",
-                "--disable-gpu"
+                "--no-zygote",
+                "--disable-accelerated-2d-canvas",
+                "--no-first-run"
             ]
         }
     });
@@ -101,7 +101,7 @@ function initWhatsAppClient() {
         try {
             const qrDataUrl = await QRCode.toDataURL(qr);
             io.emit("qr", qrDataUrl);
-            io.emit("status", {state: "QR_RECEIVED"});
+            io.emit("status", { state: "QR_RECEIVED" });
             console.log("📲 QR generated and emitted.");
         } catch (err) {
             console.error("QR generation error:", err);
@@ -123,12 +123,12 @@ function initWhatsAppClient() {
 
     client.on("authenticated", () => {
         console.log("✅ Authenticated!");
-        io.emit("status", {state: "AUTHENTICATED"});
+        io.emit("status", { state: "AUTHENTICATED" });
     });
 
     client.on("ready", () => {
         console.log("💬 WhatsApp client ready!");
-        io.emit("status", {state: "READY"});
+        io.emit("status", { state: "READY" });
 
         const name = client.info.pushname;
         const mobileNumber = client.info.wid.user;
@@ -138,12 +138,12 @@ function initWhatsAppClient() {
 
     client.on("auth_failure", (msg) => {
         console.log("❌ Auth failure:", msg);
-        io.emit("status", {state: "AUTH_FAILURE"});
+        io.emit("status", { state: "AUTH_FAILURE" });
     });
 
     client.on("disconnected", (reason) => {
         console.log("🔌 WhatsApp disconnected:", reason);
-        io.emit("status", {state: "DISCONNECTED"});
+        io.emit("status", { state: "DISCONNECTED" });
     });
 
     client.initialize();
@@ -165,7 +165,7 @@ io.on("connection", (socket) => {
                 const mobileNumber = client?.info?.wid?.user;
 
                 io.emit("userInfo", { state: state, name: name, number: mobileNumber, platform: client?.info?.platform });
-            }else{
+            } else {
                 io.emit("userInfo", {});
             }
         } catch (err) {
@@ -198,7 +198,7 @@ app.post("/logout", async (req, res) => {
     try {
         await client.logout();
         console.log("👋 Logged out from WhatsApp session.");
-        io.emit("status", {state: "DISCONNECTED"});
+        io.emit("status", { state: "DISCONNECTED" });
         res.json({ success: true, msg: "Logged out successfully" });
     } catch (err) {
         console.error("Logout error:", err);
