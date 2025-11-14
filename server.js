@@ -193,7 +193,7 @@ app.post("/link", async (req, res) => {
             await client.destroy(); // safely close old instance if exists
         }
         initWhatsAppClient(); // create new instance and emit fresh QR
-        console.log("♻️ Reinitializing WhatsApp client...");
+      
         res.json({ success: true, msg: "New QR generated. Scan to link WhatsApp." });
     } catch (err) {
         console.error("Error reinitializing:", err);

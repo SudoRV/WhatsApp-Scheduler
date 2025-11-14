@@ -227,7 +227,7 @@
       
       const d = new Date(localTime);
       const utcISO = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString();
-      console.log(utcISO, localTime)
+      console.log(utcISO, "  ", localTime, "  ",d.getTimezoneOffset())            
 
       const res = await fetch("/schedule", {
         method: "POST",
