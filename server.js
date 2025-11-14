@@ -101,36 +101,49 @@ function initWhatsAppClient() {
         try {
             const qrDataUrl = await QRCode.toDataURL(qr);
             io.emit("qr", qrDataUrl);
-            io.emit("status", "QR_RECEIVED");
+            io.emit("status", {state: "QR_RECEIVED"});
             console.log("📲 QR generated and emitted.");
         } catch (err) {
             console.error("QR generation error:", err);
         }
     });
 
+    client.on("auth_attempt", () => {
+        console.log("🔐 Authentication handshake started!");
+        // You can trigger your function here
+        // yourCustomFunction();
+    });
+
+    client.on("change_state", (state) => {
+        if (state === "CONNECTING") {
+            console.log("📡 QR scanned — handshake started!");
+            showLoadingUI();
+        }
+    });
+
     client.on("authenticated", () => {
         console.log("✅ Authenticated!");
-        io.emit("status", "AUTHENTICATED");
+        io.emit("status", {state: "AUTHENTICATED"});
     });
 
     client.on("ready", () => {
         console.log("💬 WhatsApp client ready!");
-        io.emit("status", "READY");
+        io.emit("status", {state: "READY"});
 
         const name = client.info.pushname;
         const mobileNumber = client.info.wid.user;
 
-        io.emit("userInfo", { name: name, number: mobileNumber, platform: client.info.platform });
+        io.emit("userInfo", { state: "READY", name: name, number: mobileNumber, platform: client.info.platform });
     });
 
     client.on("auth_failure", (msg) => {
         console.log("❌ Auth failure:", msg);
-        io.emit("status", "AUTH_FAILURE");
+        io.emit("status", {state: "AUTH_FAILURE"});
     });
 
     client.on("disconnected", (reason) => {
         console.log("🔌 WhatsApp disconnected:", reason);
-        io.emit("status", "DISCONNECTED");
+        io.emit("status", {state: "DISCONNECTED"});
     });
 
     client.initialize();
@@ -142,8 +155,28 @@ initWhatsAppClient();
 // simple web socket connection logs
 io.on("connection", (socket) => {
     console.log("Client connected to socket.io");
+
+    // Wrap async code in an IIFE
+    (async () => {
+        try {
+            if (client?.info) {
+                const state = await client.getState();
+                const name = client?.info?.pushname;
+                const mobileNumber = client?.info?.wid?.user;
+
+                io.emit("userInfo", { state: state, name: name, number: mobileNumber, platform: client?.info?.platform });
+            }else{
+                io.emit("userInfo", {});
+            }
+        } catch (err) {
+            console.error("Error getting client state", err);
+            io.emit("userInfo", {});
+        }
+    })();
+
     socket.on("disconnect", () => console.log("Socket disconnected"));
 });
+
 
 // Re-initialize WhatsApp client manually
 app.post("/link", async (req, res) => {
@@ -165,7 +198,7 @@ app.post("/logout", async (req, res) => {
     try {
         await client.logout();
         console.log("👋 Logged out from WhatsApp session.");
-        io.emit("status", "DISCONNECTED");
+        io.emit("status", {state: "DISCONNECTED"});
         res.json({ success: true, msg: "Logged out successfully" });
     } catch (err) {
         console.error("Logout error:", err);
@@ -246,13 +279,6 @@ schedules.forEach(s => {
         });
     }
 });
-
-
-schedule.scheduleJob(new Date(Date.now() + 5000), () => {
-    console.log("🔥 Schedule test fired at", new Date().toISOString());
-});
-
-
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

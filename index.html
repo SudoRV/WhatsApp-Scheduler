@@ -22,6 +22,17 @@
       margin-top: 14px;
     }
 
+    #device-info p {
+      margin: 4px 0;
+    }
+    
+    #qrSection img.qr {
+      max-width: 260px;
+      max-height: 260px;
+      object-fit: contain;
+    }
+    
+
     img.qr {
       width: 260px;
       height: 260px;
@@ -79,16 +90,31 @@
 <body>
   <h2>WhatsApp Scheduler — login with QR</h2>
 
-  <div class="card">
-    <button id="linkBtn">Link WhatsApp</button>
-    <button id="logoutBtn" style="margin-top:10px; display: none;">Logout</button>
-    <div id="qrSection">
+  <div class="card" style="display: flex; align-items: flex-start; gap: 20px;">
+
+    <!-- Left side: Device info + logout -->
+    <div style="flex: 1;">
+      <div id="device-info" style="margin-bottom: 10px;">
+        <p id="ws-name"><b>Name:</b> —</p>
+        <p id="ws-number"><b>Number:</b> —</p>
+        <p id="ws-device"><b>Platform:</b> —</p>
+      </div>
+
+      <button id="linkBtn">Link WhatsApp</button>
+      <button id="logoutBtn" style="margin-top:10px; display: none;">Logout</button>
+
+      <p class="status">Status: <span id="statusText">NOT_CONNECTED</span></p>
+    </div>
+
+    <!-- Right side: QR code -->
+    <div id="qrSection" style="flex: 1; text-align: center;">
       <p><strong>Scan this QR in WhatsApp → Linked devices → Link a device</strong></p>
       <img id="qrImage" class="qr" src="" alt="QR will appear here" />
       <p id="qrHint">Waiting for QR...</p>
     </div>
-    <p class="status">Status: <span id="statusText">NOT_CONNECTED</span></p>
+
   </div>
+
 
   <div class="card">
     <h3>Schedule a Message</h3>
@@ -131,15 +157,22 @@
     const scheduleList = document.getElementById("scheduleList");
 
     // socket.io events
-    socket.on("connect", () => console.log("connected to socket"));
+    socket.on("connect", async () => {
+      console.log("connected to socket");
+      //const res = await fetch("/link", { method: "POST" });
+
+
+
+    });
     socket.on("qr", (dataUrl) => {
       qrImage.src = dataUrl;
       qrHint.innerText = "Scan using WhatsApp → Linked devices → Link a device";
       statusText.innerText = "QR_RECEIVED";
     });
     socket.on("status", (s) => {
+      s = s.state;
       statusText.innerText = s;
-      if (s === "READY" || s === "AUTHENTICATED") {
+      if (s === "READY" || s === "AUTHENTICATED" || s === "CONNECTED") {
         document.getElementById("qrSection").style.display = "none";
         linkBtn.style.display = "none";
         logoutBtn.style.display = "inline-block";
@@ -147,6 +180,26 @@
         document.getElementById("qrSection").style.display = "block";
       }
     });
+
+    socket.on("userInfo", (data) => {
+
+      console.log(data)
+      if(!data?.state){
+        fetch("/link", { method: "POST" });
+        return;
+      }
+      
+      document.getElementById("ws-name").innerHTML = `<b>Name:</b> ${data.name || "-"}`;
+      document.getElementById("ws-number").innerHTML = `<b>Number:</b> +${data.number || "-"}`;
+      document.getElementById("ws-device").innerHTML = `<b>Platform:</b> ${data.platform || "-"}`;
+    
+      // Update status to READY
+      statusText.innerText = "READY";
+      document.getElementById("qrSection").style.display = "none";
+      linkBtn.style.display = "none";
+      logoutBtn.style.display = "inline-block";
+    });
+    
 
     // Link WhatsApp
     linkBtn.addEventListener("click", async () => {
@@ -166,20 +219,25 @@
     // Create / update schedule
     document.getElementById("scheduleForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+
       const number = document.getElementById("number").value.trim();
       const message = document.getElementById("message").value.trim();
-      const time = document.getElementById("time").value;
-      const repeat = document.getElementById("repeat").value;
+      const localTime = document.getElementById("time").value; // local datetime string
+
+      // Convert local time → UTC ISO string
+      const dateObj = new Date(localTime);
+      const utcISO = new Date(dateObj.getTime() - dateObj.getTimezoneOffset() * 60000).toISOString();
 
       const res = await fetch("/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ number, message, time, repeat })
+        body: JSON.stringify({ number, message, time: utcISO })
       });
+
       const data = await res.json();
       document.getElementById("result").innerText = data.msg || JSON.stringify(data);
-      fetchSchedules();
     });
+
 
     // Delete schedule
     async function deleteSchedule(number) {
