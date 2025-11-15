@@ -225,6 +225,7 @@ app.post("/schedule", async (req, res) => {
 
     const chatId = `${number.replace(/\D/g, "")}@c.us`;
     let date = new Date(time).toISOString();
+    console.log(date)
     date = new Date(date);
     console.log(date)
     if (isNaN(date.getTime()))
