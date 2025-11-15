@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Page title</title>
+</head>
+<body>
+    
+    <form id="form">
+        <input id="time" type="datetime-local" required />
+        <input type="submit" value="set date">
+    </form>
+    
+<script>
+    document.getElementById("form").addEventListener("submit",(event)=>{
+        event.preventDefault();
+        
+        const localTime = document.getElementById("time").value;
+    
+        const d = new Date(localTime);
+    
+        const utcISO = d.toISOString();
+    
+        console.log(utcISO, "  ", localTime, "  ",d.getTimezoneOffset())       
+    })   
+      
+</script>
+</body>
+</html>
