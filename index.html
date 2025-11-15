@@ -222,8 +222,12 @@
 
       const number = document.getElementById("number").value.trim();
       const message = document.getElementById("message").value.trim();
-      const localTime = document.getElementById("time").value; // local datetime string
+      let localTime = document.getElementById("time").value; // local datetime string
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; // browser timezone
+      
+      localTime = localTime.toISOString();
+      
+      console.log(localTime)
                    
       const res = await fetch("/schedule", {
         method: "POST",
