@@ -219,13 +219,13 @@ app.post("/logout", async (req, res) => {
 // schedule endpoint (create/update)
 app.post("/schedule", async (req, res) => {
     const { number, message, time, timezone, repeat = "once" } = req.body;
-    console.log(time, timezone);
+    
     if (!number || !message || !time || !timezone)
         return res.status(400).json({ success: false, error: "number, message and time are required" });
 
     const chatId = `${number.replace(/\D/g, "")}@c.us`;
     let date = new Date(time);    
-    console.log(date)
+    
     if (isNaN(date.getTime()))
         return res.status(400).json({ success: false, error: "Invalid time format" });
 

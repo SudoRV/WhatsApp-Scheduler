@@ -183,7 +183,7 @@
 
     socket.on("userInfo", (data) => {
 
-      console.log(data)
+      
       if (!data?.state) {
         fetch("/link", { method: "POST" });
         return;
@@ -225,9 +225,7 @@
       let localTime = new Date(document.getElementById("time").value); // local datetime string
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; // browser timezone
       
-      localTime = localTime.toISOString();
-      
-      console.log(localTime)
+      localTime = localTime.toISOString();            
                    
       const res = await fetch("/schedule", {
         method: "POST",
