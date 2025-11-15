@@ -224,7 +224,8 @@ app.post("/schedule", async (req, res) => {
         return res.status(400).json({ success: false, error: "number, message and time are required" });
 
     const chatId = `${number.replace(/\D/g, "")}@c.us`;
-    const date = new Date(time).toISOString();
+    let date = new Date(time).toISOString();
+    date = new Date(date);
     console.log(date)
     if (isNaN(date.getTime()))
         return res.status(400).json({ success: false, error: "Invalid time format" });
